@@ -4,7 +4,7 @@
 
 ## TL;DR
 
-This repository is a fork of [llama.cpp](https://github.com/ggerganov/llama.cpp) with better CPU and hybrid GPU/CPU performance, new SOTA quantization types, first-class Bitnet support, better DeepSeek performance via MLA, FlashMLA, fused MoE operations and tensor overrides for hybrid GPU/CPU inference, row-interleaved quant packing, etc.
+This repository is a fork of [ik_llama.cpp](https://github.com/ikawrakow/ik_llama.cpp) for use with the dreamcast, ripping out all cuda related things and optimizing for the dreamcasts cpu, the SH-4, perhaps optimizing for other obscure risc processors as well!
 
 ## Latest News
 
