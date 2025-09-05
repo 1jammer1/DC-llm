@@ -9,9 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED true)
 
-set(CMAKE_CUDA_USE_RESPONSE_FILE_FOR_INCLUDES 0)
-set(CMAKE_CUDA_USE_RESPONSE_FILE_FOR_LIBRARIES 0)
-set(CMAKE_CUDA_USE_RESPONSE_FILE_FOR_OBJECTS 0)
+# CUDA response file options removed for CPU-only build
 
 if (NOT XCODE AND NOT MSVC AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -100,9 +98,7 @@ if (NOT DEFINED GGML_LLAMAFILE)
     set(GGML_LLAMAFILE ON)
 endif()
 
-if (NOT DEFINED GGML_CUDA_USE_GRAPHS)
-    set(GGML_CUDA_USE_GRAPHS ON)
-endif()
+# CUDA graphs option removed for CPU-only build
 
 # transition helpers
 function (llama_option_depr TYPE OLD NEW)
@@ -112,16 +108,8 @@ function (llama_option_depr TYPE OLD NEW)
     endif()
 endfunction()
 
-llama_option_depr(FATAL_ERROR LLAMA_CUBLAS              GGML_CUDA)
-llama_option_depr(WARNING     LLAMA_CUDA                GGML_CUDA)
-llama_option_depr(WARNING     LLAMA_KOMPUTE             GGML_KOMPUTE)
-llama_option_depr(WARNING     LLAMA_METAL               GGML_METAL)
-llama_option_depr(WARNING     LLAMA_METAL_EMBED_LIBRARY GGML_METAL_EMBED_LIBRARY)
-llama_option_depr(WARNING     LLAMA_NATIVE              GGML_NATIVE)
-llama_option_depr(WARNING     LLAMA_RPC                 GGML_RPC)
-llama_option_depr(WARNING     LLAMA_SYCL                GGML_SYCL)
-llama_option_depr(WARNING     LLAMA_SYCL_F16            GGML_SYCL_F16)
-llama_option_depr(WARNING     LLAMA_CANN                GGML_CANN)
+# CUDA deprecation warnings removed for CPU-only build
+# GPU deprecation warnings removed for CPU-only build
 
 if (NOT MSVC)
     if (LLAMA_SANITIZE_THREAD)

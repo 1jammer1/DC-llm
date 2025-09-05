@@ -71,25 +71,20 @@ LEGACY_TARGETS_CLEAN = main quantize quantize-stats perplexity imatrix embedding
 #  We don't want to clutter things too much, so we only build replacements for the most commonly used binaries.
 LEGACY_TARGETS_BUILD = main quantize perplexity embedding server
 
-# Deprecation aliases
+# Deprecation aliases - CUDA support removed for CPU-only build
 ifdef LLAMA_CUBLAS
-$(error LLAMA_CUBLAS is removed. Use GGML_CUDA instead.)
+$(error LLAMA_CUBLAS is not supported. CPU-only build.)
 endif
 
 ifdef LLAMA_CUDA
-GGML_CUDA := 1
-DEPRECATE_WARNING := 1
+$(error LLAMA_CUDA is not supported. CPU-only build.)
 endif
 
-ifdef LLAMA_KOMPUTE
-GGML_KOMPUTE := 1
-DEPRECATE_WARNING := 1
+ifdef GGML_CUDA
+$(error GGML_CUDA is not supported. CPU-only build.)
 endif
 
-ifdef LLAMA_METAL
-GGML_METAL := 1
-DEPRECATE_WARNING := 1
-endif
+# GPU backend options removed for CPU-only build
 
 ifdef LLAMA_OPENMP
 GGML_OPENMP := 1
@@ -101,15 +96,7 @@ GGML_RPC := 1
 DEPRECATE_WARNING := 1
 endif
 
-ifdef LLAMA_SYCL
-GGML_SYCL := 1
-DEPRECATE_WARNING := 1
-endif
-
-ifdef LLAMA_SYCL_F16
-GGML_SYCL_F16 := 1
-DEPRECATE_WARNING := 1
-endif
+# SYCL GPU backend options removed for CPU-only build
 
 ifdef LLAMA_OPENBLAS
 GGML_OPENBLAS := 1
@@ -196,9 +183,7 @@ ifdef GGML_RPC
 	BUILD_TARGETS += rpc-server
 endif
 
-ifdef GGML_VULKAN
-	BUILD_TARGETS += vulkan-shaders-gen
-endif
+# Vulkan build targets removed for CPU-only build
 
 default: $(BUILD_TARGETS) $(LEGACY_TARGETS_BUILD)
 
@@ -250,7 +235,7 @@ endif
 MK_CPPFLAGS  = -Iggml/include -Iggml/src -Iinclude -Isrc -Icommon
 MK_CFLAGS    = -std=c11   -fPIC
 MK_CXXFLAGS  = -std=c++17 -fPIC
-MK_NVCCFLAGS = -std=c++17
+# NVCC flags removed for CPU-only build
 
 ifdef LLAMA_NO_CCACHE
 GGML_NO_CCACHE := 1
@@ -319,7 +304,6 @@ ifdef LLAMA_DEBUG
 	MK_CFLAGS    += -O0 -g
 	MK_CXXFLAGS  += -O0 -g
 	MK_LDFLAGS   += -g
-	MK_NVCCFLAGS += -O0 -g
 
 	ifeq ($(UNAME_S),Linux)
 		MK_CPPFLAGS += -D_GLIBCXX_ASSERTIONS
@@ -328,7 +312,6 @@ else
 	MK_CPPFLAGS   += -DNDEBUG
 	MK_CFLAGS     += -O3
 	MK_CXXFLAGS   += -O3
-	MK_NVCCFLAGS  += -O3
 endif
 
 ifdef LLAMA_SANITIZE_THREAD
@@ -504,7 +487,6 @@ endif
 ifneq ($(filter ppc64le%,$(UNAME_M)),)
 	MK_CFLAGS   += -mcpu=powerpc64le
 	MK_CXXFLAGS += -mcpu=powerpc64le
-	CUDA_POWER_ARCH = 1
 endif
 
 ifneq ($(filter loongarch64%,$(UNAME_M)),)
@@ -529,21 +511,12 @@ ifndef GGML_NO_ACCELERATE
 	endif
 endif # GGML_NO_ACCELERATE
 
-ifdef GGML_MUSA
-	CC := clang
-	CXX := clang++
-	GGML_CUDA := 1
-	MK_CPPFLAGS += -DGGML_USE_MUSA
-endif
+# MUSA support removed for CPU-only build
 
 ifndef GGML_NO_OPENMP
 	MK_CPPFLAGS += -DGGML_USE_OPENMP
 	MK_CFLAGS   += -fopenmp
 	MK_CXXFLAGS += -fopenmp
-	ifdef GGML_MUSA
-		MK_CPPFLAGS += -I/usr/lib/llvm-10/include/openmp
-		MK_LDFLAGS  += -L/usr/lib/llvm-10/lib
-	endif # GGML_MUSA
 endif # GGML_NO_OPENMP
 
 ifdef GGML_OPENBLAS
@@ -577,6 +550,14 @@ ifndef GGML_NO_IQKMULMAT
 	MK_CFLAGS   += -DGGML_USE_IQK_MULMAT
 	MK_CPPFLAGS += -DGGML_USE_IQK_MULMAT
 	OBJ_GGML    += ggml/src/iqk/iqk_mul_mat.o
+	OBJ_GGML    += ggml/src/iqk/iqk_flash_attn.o
+	OBJ_GGML    += ggml/src/iqk/iqk_gemm_1bit.o
+	OBJ_GGML    += ggml/src/iqk/iqk_gemm_floats.o
+	OBJ_GGML    += ggml/src/iqk/iqk_gemm_iqk_quants.o
+	OBJ_GGML    += ggml/src/iqk/iqk_gemm_iquants.o
+	OBJ_GGML    += ggml/src/iqk/iqk_gemm_kquants.o
+	OBJ_GGML    += ggml/src/iqk/iqk_gemm_ktquants.o
+	OBJ_GGML    += ggml/src/iqk/iqk_gemm_legacy_quants.o
 endif
 
 ifndef GGML_NO_LLAMAFILE
@@ -589,226 +570,10 @@ ifdef GGML_RPC
 	OBJ_GGML    += ggml/src/ggml-rpc.o
 endif # GGML_RPC
 
-OBJ_CUDA_TMPL      = $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/fattn-wmma*.cu))
-OBJ_CUDA_TMPL     += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/mmq*.cu))
+# CUDA template objects removed for CPU-only build
 
-ifdef GGML_CUDA_FA_ALL_QUANTS
-	OBJ_CUDA_TMPL += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/fattn-vec*.cu))
-else
-	OBJ_CUDA_TMPL += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/fattn-vec*q4_0-q4_0.cu))
-	OBJ_CUDA_TMPL += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/fattn-vec*q8_0-q8_0.cu))
-	OBJ_CUDA_TMPL += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/fattn-vec*f16-f16.cu))
-	OBJ_CUDA_TMPL += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/fattn-vec*q8_0-iq4_nl.cu))
-	OBJ_CUDA_TMPL += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/fattn-vec*:iq4_nl-iq4_nl.cu))
-	OBJ_CUDA_TMPL += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/fattn-vec*:q6_0-q5_0.cu))
-	OBJ_CUDA_TMPL += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/template-instances/fattn-vec*:q8_0-q6_0.cu))
-endif # GGML_CUDA_FA_ALL_QUANTS
 
-ifdef GGML_CUDA
-	ifdef GGML_MUSA
-		ifneq ('', '$(wildcard /opt/musa)')
-			CUDA_PATH ?= /opt/musa
-		else
-			CUDA_PATH ?= /usr/local/musa
-		endif
-
-		MK_CPPFLAGS  += -DGGML_USE_CUDA -I$(CUDA_PATH)/include
-		MK_LDFLAGS   += -lmusa -lmublas -lmusart -lpthread -ldl -lrt -L$(CUDA_PATH)/lib -L/usr/lib64
-		MK_NVCCFLAGS += -x musa -mtgpu --cuda-gpu-arch=mp_22
-	else
-		ifneq ('', '$(wildcard /opt/cuda)')
-			CUDA_PATH ?= /opt/cuda
-		else
-			CUDA_PATH ?= /usr/local/cuda
-		endif
-
-		MK_CPPFLAGS  += -DGGML_USE_CUDA -I$(CUDA_PATH)/include -I$(CUDA_PATH)/targets/$(UNAME_M)-linux/include -DGGML_CUDA_USE_GRAPHS
-		MK_LDFLAGS   += -lcuda -lcublas -lculibos -lcudart -lcublasLt -lpthread -ldl -lrt -L$(CUDA_PATH)/lib64 -L/usr/lib64 -L$(CUDA_PATH)/targets/$(UNAME_M)-linux/lib -L$(CUDA_PATH)/lib64/stubs -L/usr/lib/wsl/lib
-		MK_NVCCFLAGS += -use_fast_math
-	endif # GGML_MUSA
-
-	OBJ_GGML += ggml/src/ggml-cuda.o
-	OBJ_GGML += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/*.cu))
-	OBJ_GGML += $(OBJ_CUDA_TMPL)
-
-ifdef LLAMA_FATAL_WARNINGS
-	MK_NVCCFLAGS += -Werror all-warnings
-endif # LLAMA_FATAL_WARNINGS
-
-ifndef GGML_MUSA
-ifndef JETSON_EOL_MODULE_DETECT
-	MK_NVCCFLAGS += --forward-unknown-to-host-compiler
-endif # JETSON_EOL_MODULE_DETECT
-endif # GGML_MUSA
-
-ifdef LLAMA_DEBUG
-	MK_NVCCFLAGS += -lineinfo
-endif # LLAMA_DEBUG
-
-ifdef GGML_CUDA_DEBUG
-	MK_NVCCFLAGS += --device-debug
-endif # GGML_CUDA_DEBUG
-
-ifdef GGML_CUDA_NVCC
-	NVCC = $(CCACHE) $(GGML_CUDA_NVCC)
-else
-	ifdef GGML_MUSA
-		NVCC = $(CCACHE) mcc
-	else
-		NVCC = $(CCACHE) nvcc
-	endif # GGML_MUSA
-endif # GGML_CUDA_NVCC
-
-ifdef CUDA_DOCKER_ARCH
-	MK_NVCCFLAGS += -Wno-deprecated-gpu-targets -arch=$(CUDA_DOCKER_ARCH)
-else ifndef CUDA_POWER_ARCH
-	MK_NVCCFLAGS += -arch=native
-endif # CUDA_DOCKER_ARCH
-
-ifdef GGML_CUDA_FORCE_DMMV
-	MK_NVCCFLAGS += -DGGML_CUDA_FORCE_DMMV
-endif # GGML_CUDA_FORCE_DMMV
-
-ifdef GGML_CUDA_FORCE_MMQ
-	MK_NVCCFLAGS += -DGGML_CUDA_FORCE_MMQ
-endif # GGML_CUDA_FORCE_MMQ
-
-ifdef GGML_CUDA_FORCE_CUBLAS
-	MK_NVCCFLAGS += -DGGML_CUDA_FORCE_CUBLAS
-endif # GGML_CUDA_FORCE_CUBLAS
-
-ifdef GGML_CUDA_DMMV_X
-	MK_NVCCFLAGS += -DGGML_CUDA_DMMV_X=$(GGML_CUDA_DMMV_X)
-else
-	MK_NVCCFLAGS += -DGGML_CUDA_DMMV_X=32
-endif # GGML_CUDA_DMMV_X
-
-ifdef GGML_CUDA_MMV_Y
-	MK_NVCCFLAGS += -DGGML_CUDA_MMV_Y=$(GGML_CUDA_MMV_Y)
-else ifdef GGML_CUDA_DMMV_Y
-	MK_NVCCFLAGS += -DGGML_CUDA_MMV_Y=$(GGML_CUDA_DMMV_Y) # for backwards compatibility
-else
-	MK_NVCCFLAGS += -DGGML_CUDA_MMV_Y=1
-endif # GGML_CUDA_MMV_Y
-
-ifdef GGML_CUDA_F16
-	MK_NVCCFLAGS += -DGGML_CUDA_F16
-endif # GGML_CUDA_F16
-
-ifdef GGML_CUDA_DMMV_F16
-	MK_NVCCFLAGS += -DGGML_CUDA_F16
-endif # GGML_CUDA_DMMV_F16
-
-ifdef GGML_CUDA_KQUANTS_ITER
-	MK_NVCCFLAGS += -DK_QUANTS_PER_ITERATION=$(GGML_CUDA_KQUANTS_ITER)
-else
-	MK_NVCCFLAGS += -DK_QUANTS_PER_ITERATION=2
-endif
-
-ifdef GGML_CUDA_PEER_MAX_BATCH_SIZE
-	MK_NVCCFLAGS += -DGGML_CUDA_PEER_MAX_BATCH_SIZE=$(GGML_CUDA_PEER_MAX_BATCH_SIZE)
-else
-	MK_NVCCFLAGS += -DGGML_CUDA_PEER_MAX_BATCH_SIZE=128
-endif # GGML_CUDA_PEER_MAX_BATCH_SIZE
-
-ifdef GGML_CUDA_NO_PEER_COPY
-	MK_NVCCFLAGS += -DGGML_CUDA_NO_PEER_COPY
-endif # GGML_CUDA_NO_PEER_COPY
-
-ifdef GGML_CUDA_CCBIN
-	MK_NVCCFLAGS += -ccbin $(GGML_CUDA_CCBIN)
-endif # GGML_CUDA_CCBIN
-
-ifdef GGML_CUDA_FA_ALL_QUANTS
-	MK_NVCCFLAGS += -DGGML_CUDA_FA_ALL_QUANTS
-endif # GGML_CUDA_FA_ALL_QUANTS
-
-ifdef JETSON_EOL_MODULE_DETECT
-define NVCC_COMPILE
-	$(NVCC) -I. -Icommon -D_XOPEN_SOURCE=600 -D_GNU_SOURCE -DNDEBUG -DGGML_USE_CUDA -I/usr/local/cuda/include -I/opt/cuda/include -I/usr/local/cuda/targets/aarch64-linux/include -std=c++11 -O3 $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(CUDA_CXXFLAGS)" -c $< -o $@
-endef # NVCC_COMPILE
-else
-	ifdef GGML_MUSA
-define NVCC_COMPILE
-	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -c $< -o $@
-endef # NVCC_COMPILE
-	else
-define NVCC_COMPILE
-	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(CUDA_CXXFLAGS)" -c $< -o $@
-endef # NVCC_COMPILE
-	endif # GGML_MUSA
-endif # JETSON_EOL_MODULE_DETECT
-
-ggml/src/ggml-cuda/%.o: \
-	ggml/src/ggml-cuda/%.cu \
-	ggml/include/ggml.h \
-	ggml/src/ggml-common.h \
-	ggml/src/ggml-cuda/common.cuh
-	$(NVCC_COMPILE)
-
-ggml/src/ggml-cuda.o: \
-	ggml/src/ggml-cuda.cu \
-	ggml/include/ggml-cuda.h \
-	ggml/include/ggml.h \
-	ggml/include/ggml-backend.h \
-	ggml/src/ggml-backend-impl.h \
-	ggml/src/ggml-common.h \
-	$(wildcard ggml/src/ggml-cuda/*.cuh)
-	$(NVCC_COMPILE)
-endif # GGML_CUDA
-
-ifdef GGML_VULKAN
-	MK_CPPFLAGS += -DGGML_USE_VULKAN
-	MK_LDFLAGS  += $(shell pkg-config --libs vulkan)
-	OBJ_GGML    += ggml/src/ggml-vulkan.o ggml/src/ggml-vulkan-shaders.o
-
-ifdef GGML_VULKAN_CHECK_RESULTS
-	MK_CPPFLAGS  += -DGGML_VULKAN_CHECK_RESULTS
-endif
-
-ifdef GGML_VULKAN_DEBUG
-	MK_CPPFLAGS  += -DGGML_VULKAN_DEBUG
-endif
-
-ifdef GGML_VULKAN_MEMORY_DEBUG
-	MK_CPPFLAGS  += -DGGML_VULKAN_MEMORY_DEBUG
-endif
-
-ifdef GGML_VULKAN_PERF
-	MK_CPPFLAGS  += -DGGML_VULKAN_PERF
-endif
-
-ifdef GGML_VULKAN_VALIDATE
-	MK_CPPFLAGS  += -DGGML_VULKAN_VALIDATE
-endif
-
-ifdef GGML_VULKAN_RUN_TESTS
-	MK_CPPFLAGS  += -DGGML_VULKAN_RUN_TESTS
-endif
-
-GLSLC_CMD  = glslc
-_ggml_vk_genshaders_cmd = $(shell pwd)/vulkan-shaders-gen
-_ggml_vk_header = ggml/src/ggml-vulkan-shaders.hpp
-_ggml_vk_source = ggml/src/ggml-vulkan-shaders.cpp
-_ggml_vk_input_dir = ggml/src/vulkan-shaders
-_ggml_vk_shader_deps = $(echo $(_ggml_vk_input_dir)/*.comp)
-
-ggml/src/ggml-vulkan.o: ggml/src/ggml-vulkan.cpp ggml/include/ggml-vulkan.h $(_ggml_vk_header) $(_ggml_vk_source)
-	$(CXX) $(CXXFLAGS) $(shell pkg-config --cflags vulkan) -c $< -o $@
-
-$(_ggml_vk_header): $(_ggml_vk_source)
-
-$(_ggml_vk_source): $(_ggml_vk_shader_deps) vulkan-shaders-gen
-	$(_ggml_vk_genshaders_cmd) \
-		--glslc      $(GLSLC_CMD) \
-		--input-dir  $(_ggml_vk_input_dir) \
-		--target-hpp $(_ggml_vk_header) \
-		--target-cpp $(_ggml_vk_source)
-
-vulkan-shaders-gen: ggml/src/vulkan-shaders/vulkan-shaders-gen.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $(LDFLAGS) ggml/src/vulkan-shaders/vulkan-shaders-gen.cpp
-
-endif # GGML_VULKAN
+# Vulkan backend removed for CPU-only build
 
 ifdef GGML_HIPBLAS
 	ifeq ($(wildcard /opt/rocm),)
@@ -852,30 +617,8 @@ ifdef GGML_CUDA_FORCE_CUBLAS
 	HIPFLAGS += -DGGML_CUDA_FORCE_CUBLAS
 endif # GGML_CUDA_FORCE_CUBLAS
 
-ifdef GGML_CUDA_NO_PEER_COPY
-	HIPFLAGS += -DGGML_CUDA_NO_PEER_COPY
-endif # GGML_CUDA_NO_PEER_COPY
+# CUDA references removed for CPU-only build
 
-	OBJ_GGML += ggml/src/ggml-cuda.o
-	OBJ_GGML += $(patsubst %.cu,%.o,$(wildcard ggml/src/ggml-cuda/*.cu))
-	OBJ_GGML += $(OBJ_CUDA_TMPL)
-
-ggml/src/ggml-cuda.o: \
-	ggml/src/ggml-cuda.cu \
-	ggml/include/ggml-cuda.h \
-	ggml/include/ggml.h \
-	ggml/include/ggml-backend.h \
-	ggml/src/ggml-backend-impl.h \
-	ggml/src/ggml-common.h \
-	$(wildcard ggml/src/ggml-cuda/*.cuh)
-	$(HIPCC) $(CXXFLAGS) $(HIPFLAGS) -x hip -c -o $@ $<
-
-ggml/src/ggml-cuda/%.o: \
-	ggml/src/ggml-cuda/%.cu \
-	ggml/include/ggml.h \
-	ggml/src/ggml-common.h \
-	ggml/src/ggml-cuda/common.cuh
-	$(HIPCC) $(CXXFLAGS) $(HIPFLAGS) -x hip -c -o $@ $<
 endif # GGML_HIPBLAS
 
 ifdef GGML_METAL
@@ -891,31 +634,7 @@ ifdef GGML_METAL_EMBED_LIBRARY
 endif
 endif # GGML_METAL
 
-ifdef GGML_METAL
-ggml/src/ggml-metal.o: \
-	ggml/src/ggml-metal.m \
-	ggml/include/ggml-metal.h \
-	ggml/include/ggml.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-ifdef GGML_METAL_EMBED_LIBRARY
-ggml/src/ggml-metal-embed.o: \
-	ggml/src/ggml-metal.metal \
-	ggml/src/ggml-common.h
-	@echo "Embedding Metal library"
-	@sed -e '/#include "ggml-common.h"/r ggml/src/ggml-common.h' -e '/#include "ggml-common.h"/d' < ggml/src/ggml-metal.metal > ggml/src/ggml-metal-embed.metal
-	$(eval TEMP_ASSEMBLY=$(shell mktemp -d))
-	@echo ".section __DATA, __ggml_metallib"            >  $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo ".globl _ggml_metallib_start"                 >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo "_ggml_metallib_start:"                       >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo ".incbin \"ggml/src/ggml-metal-embed.metal\"" >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo ".globl _ggml_metallib_end"                   >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo "_ggml_metallib_end:"                         >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	$(CC) $(CFLAGS) -c $(TEMP_ASSEMBLY)/ggml-metal-embed.s -o $@
-	@rm -f ${TEMP_ASSEMBLY}/ggml-metal-embed.s
-	@rmdir ${TEMP_ASSEMBLY}
-endif
-endif # GGML_METAL
+# Metal backend removed for CPU-only build
 
 OBJ_GGML += \
 	ggml/src/ggml.o \
@@ -929,6 +648,8 @@ OBJ_LLAMA = \
 	src/llama-vocab.o \
 	src/llama-grammar.o \
 	src/llama-sampling.o \
+	src/llama-model-loader.o \
+	src/llama-mmap.o \
 	src/unicode.o \
 	src/unicode-data.o
 
@@ -940,7 +661,11 @@ OBJ_COMMON = \
 	common/train.o \
 	common/grammar-parser.o \
 	common/build-info.o \
-	common/json-schema-to-grammar.o
+	common/json-schema-to-grammar.o \
+	common/chat.o \
+	common/chat-parser.o \
+	common/json-partial.o \
+	common/regex-partial.o
 
 OBJ_ALL = $(OBJ_GGML) $(OBJ_LLAMA) $(OBJ_COMMON)
 
@@ -993,33 +718,14 @@ $(info I NVCCFLAGS: $(NVCCFLAGS))
 $(info I LDFLAGS:   $(LDFLAGS))
 $(info I CC:        $(shell $(CC)   --version | head -n 1))
 $(info I CXX:       $(shell $(CXX)  --version | head -n 1))
-ifdef GGML_CUDA
-$(info I NVCC:      $(shell $(NVCC) --version | tail -n 1))
-CUDA_VERSION := $(shell $(NVCC) --version | grep -oP 'release (\K[0-9]+\.[0-9])')
-ifndef GGML_MUSA
-ifeq ($(shell awk -v "v=$(CUDA_VERSION)" 'BEGIN { print (v < 11.7) }'),1)
-
-ifndef CUDA_DOCKER_ARCH
-ifndef CUDA_POWER_ARCH
-$(error I ERROR: For CUDA versions < 11.7 a target CUDA architecture must be explicitly provided via environment variable CUDA_DOCKER_ARCH, e.g. by running "export CUDA_DOCKER_ARCH=compute_XX" on Unix-like systems, where XX is the minimum compute capability that the code needs to run on. A list with compute capabilities can be found here: https://developer.nvidia.com/cuda-gpus )
-endif # CUDA_POWER_ARCH
-endif # CUDA_DOCKER_ARCH
-
-endif # eq ($(shell echo "$(CUDA_VERSION) < 11.7" | bc),1)
-endif # GGML_MUSA
-endif # GGML_CUDA
 $(info )
 
 ifdef DEPRECATE_WARNING
 $(info !!! DEPRECATION WARNING !!!)
 $(info The following LLAMA_ options are deprecated and will be removed in the future. Use the GGML_ prefix instead)
 $(info   - LLAMA_CUDA)
-$(info   - LLAMA_METAL)
-$(info   - LLAMA_METAL_EMBED_LIBRARY)
 $(info   - LLAMA_OPENMP)
 $(info   - LLAMA_RPC)
-$(info   - LLAMA_SYCL)
-$(info   - LLAMA_SYCL_F16)
 $(info   - LLAMA_OPENBLAS)
 $(info   - LLAMA_OPENBLAS64)
 $(info   - LLAMA_BLIS)
@@ -1049,7 +755,7 @@ ggml/src/ggml-alloc.o: \
 	$(CC)  $(CFLAGS)   -c $< -o $@
 
 ggml/src/ggml-backend.o: \
-	ggml/src/ggml-backend.c \
+	ggml/src/ggml-backend.cpp \
 	ggml/include/ggml.h \
 	ggml/include/ggml-backend.h
 	$(CC)  $(CFLAGS)   -c $< -o $@
@@ -1131,8 +837,6 @@ src/llama.o: \
 	src/llama-sampling.h \
 	src/unicode.h \
 	include/llama.h \
-	ggml/include/ggml-cuda.h \
-	ggml/include/ggml-metal.h \
 	ggml/include/ggml.h \
 	ggml/include/ggml-alloc.h \
 	ggml/include/ggml-backend.h
@@ -1240,12 +944,9 @@ clean:
 	rm -rvf ggml/src/llamafile/*.o
 	rm -rvf ggml/src/iqk/*.o
 	rm -rvf common/build-info.cpp
-	rm -vrf ggml/src/ggml-metal-embed.metal
-	rm -vrf ggml/src/ggml-cuda/*.o
-	rm -vrf ggml/src/ggml-cuda/template-instances/*.o
+	# GPU artifacts cleanup removed for CPU-only build
 	rm -rvf $(BUILD_TARGETS)
 	rm -rvf $(TEST_TARGETS)
-	rm -f vulkan-shaders-gen ggml/src/ggml-vulkan-shaders.hpp ggml/src/ggml-vulkan-shaders.cpp
 	rm -rvf $(LEGACY_TARGETS_CLEAN)
 	find examples pocs -type f -name "*.o" -delete
 
