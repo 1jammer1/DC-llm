@@ -106,10 +106,7 @@ struct gpt_params {
     int32_t n_parallel            =     1; // number of parallel sequences to decode
     int32_t n_sequences           =     1; // number of sequences to decode
     float   p_split               =  0.1f; // speculative decoding split probability
-    int32_t n_gpu_layers          =    -1; // number of layers to store in VRAM (-1 - use default)
-    int32_t n_gpu_layers_draft    =    -1; // number of layers to store in VRAM for the draft model (-1 - use default)
-    int32_t main_gpu              =     0; // the GPU that is used for scratch and small tensors
-    float   tensor_split[128]     =   {0}; // how split tensors should be distributed across GPUs
+    // GPU layers removed for CPU-only build
     int32_t grp_attn_n            =     1; // group-attention factor
     int32_t grp_attn_w            =   512; // group-attention width
     int32_t n_print               =    -1; // print token count every n tokens (-1 = disabled)
@@ -127,7 +124,7 @@ struct gpt_params {
 
     ggml_numa_strategy numa = GGML_NUMA_STRATEGY_DISABLED;
 
-    enum llama_split_mode        split_mode        = LLAMA_SPLIT_MODE_LAYER; // how to split the model across GPUs
+    // GPU split mode removed for CPU-only build  
     enum llama_rope_scaling_type rope_scaling_type = LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED;
     enum llama_pooling_type      pooling_type      = LLAMA_POOLING_TYPE_UNSPECIFIED; // pooling type for embeddings
     enum llama_attention_type    attention_type    = LLAMA_ATTENTION_TYPE_UNSPECIFIED; // attention type for embeddings
@@ -223,7 +220,7 @@ struct gpt_params {
     bool repack_tensors    = false; // repack tensors if interleaved variant is available
     bool use_thp           = false; // use transparent huge pages (linux only)
     bool validate_quants   = false; // if true, check for NaNs while loading the model
-    bool only_active_exps  = false; // if true, offload only active experts (relevant only for hybrid CPU/GPU)
+    // GPU expert offloading removed for CPU-only build
 
     std::string cache_type_k = "f16"; // KV cache data type for the K
     std::string cache_type_v = "f16"; // KV cache data type for the V

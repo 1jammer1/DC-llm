@@ -1027,82 +1027,7 @@ bool gpt_params_find_arg(int argc, char ** argv, const std::string & arg, gpt_pa
         params.use_mlock = true;
         return true;
     }
-    if (arg == "-ngl" || arg == "--gpu-layers" || arg == "--n-gpu-layers") {
-        CHECK_ARG
-        params.n_gpu_layers = std::stoi(argv[i]);
-        if (!llama_supports_gpu_offload()) {
-            fprintf(stderr, "warning: not compiled with GPU offload support, --gpu-layers option will be ignored\n");
-            fprintf(stderr, "warning: see main README.md for information on enabling GPU BLAS support\n");
-        }
-        return true;
-    }
-    if (arg == "-ngld" || arg == "--gpu-layers-draft" || arg == "--gpu-layers-draft") {
-        CHECK_ARG
-        params.n_gpu_layers_draft = std::stoi(argv[i]);
-        if (!llama_supports_gpu_offload()) {
-            fprintf(stderr, "warning: not compiled with GPU offload support, --gpu-layers-draft option will be ignored\n");
-            fprintf(stderr, "warning: see main README.md for information on enabling GPU BLAS support\n");
-        }
-        return true;
-    }
-    if (arg == "--main-gpu" || arg == "-mg") {
-        CHECK_ARG
-        params.main_gpu = std::stoi(argv[i]);
-#ifndef GGML_USE_CUDA_SYCL_VULKAN
-        fprintf(stderr, "warning: llama.cpp was compiled without CUDA/SYCL/Vulkan. Setting the main GPU has no effect.\n");
-#endif // GGML_USE_CUDA_SYCL_VULKAN
-        return true;
-    }
-    if (arg == "--split-mode" || arg == "-sm") {
-        CHECK_ARG
-        std::string arg_next = argv[i];
-        if (arg_next == "none") {
-            params.split_mode = LLAMA_SPLIT_MODE_NONE;
-        }
-        else if (arg_next == "layer") {
-            params.split_mode = LLAMA_SPLIT_MODE_LAYER;
-        }
-        else if (arg_next == "row") {
-#ifdef GGML_USE_SYCL
-            fprintf(stderr, "warning: The split mode value:[row] is not supported by llama.cpp with SYCL. It's developing.\nExit!\n");
-            exit(1);
-#endif // GGML_USE_SYCL
-            params.split_mode = LLAMA_SPLIT_MODE_ROW;
-        }
-        else {
-            invalid_param = true;
-            return true;
-        }
-#ifndef GGML_USE_CUDA_SYCL_VULKAN
-        fprintf(stderr, "warning: llama.cpp was compiled without CUDA/SYCL/Vulkan. Setting the split mode has no effect.\n");
-#endif // GGML_USE_CUDA_SYCL_VULKAN
-        return true;
-    }
-    if (arg == "--tensor-split" || arg == "-ts") {
-        CHECK_ARG
-        std::string arg_next = argv[i];
-
-        // split string by , and /
-        const std::regex regex{ R"([,/]+)" };
-        std::sregex_token_iterator it{ arg_next.begin(), arg_next.end(), regex, -1 };
-        std::vector<std::string> split_arg{ it, {} };
-        if (split_arg.size() >= llama_max_devices()) {
-            invalid_param = true;
-            return true;
-        }
-        for (size_t i = 0; i < llama_max_devices(); ++i) {
-            if (i < split_arg.size()) {
-                params.tensor_split[i] = std::stof(split_arg[i]);
-            }
-            else {
-                params.tensor_split[i] = 0.0f;
-            }
-        }
-#ifndef GGML_USE_CUDA_SYCL_VULKAN
-        fprintf(stderr, "warning: llama.cpp was compiled without CUDA/SYCL/Vulkan. Setting a tensor split has no effect.\n");
-#endif // GGML_USE_CUDA_SYCL_VULKAN
-        return true;
-    }
+    // GPU layers option removed for CPU-only build
     if (arg == "--rpc") {
         CHECK_ARG
 #ifdef GGML_USE_RPC
@@ -1378,10 +1303,7 @@ bool gpt_params_find_arg(int argc, char ** argv, const std::string & arg, gpt_pa
         }
         return true;
     }
-    if (arg == "--offload-only-active-experts" || arg == "-ooae") {
-        params.only_active_exps = true;
-        return true;
-    }
+    // GPU expert offloading option removed for CPU-only build
     if (arg == "--host") {
         CHECK_ARG
         params.hostname = argv[i];
@@ -1952,21 +1874,7 @@ void gpt_params_print_usage(int /*argc*/, char ** argv, const gpt_params & param
                                                                         "if run without this previously, it is recommended to drop the system page cache before using this\n"
                                                                         "see https://github.com/ggerganov/llama.cpp/issues/1437" });
 
-    if (llama_supports_gpu_offload()) {
-        options.push_back({ "*",           "-ngl,  --gpu-layers N",
-                                                                        "number of layers to store in VRAM" });
-        options.push_back({ "*",           "-ngld, --gpu-layers-draft N",
-                                                                        "number of layers to store in VRAM for the draft model" });
-        options.push_back({ "*",           "-sm,   --split-mode SPLIT_MODE",
-                                                                        "how to split the model across multiple GPUs, one of:\n"
-                                                                        "  - none: use one GPU only\n"
-                                                                        "  - layer (default): split layers and KV across GPUs\n"
-                                                                        "  - row: split rows across GPUs" });
-        options.push_back({ "*",           "-ts,   --tensor-split SPLIT",
-                                                                        "fraction of the model to offload to each GPU, comma-separated list of proportions, e.g. 3,1" });
-        options.push_back({ "*",           "-mg,   --main-gpu i",       "the GPU to use for the model (with split-mode = none),\n"
-                                                                        "or for intermediate results and KV (with split-mode = row) (default: %d)", params.main_gpu });
-    }
+    // GPU help options removed for CPU-only build
 
     options.push_back({ "model" });
     options.push_back({ "*",           "       --check-tensors",        "check model tensor data for invalid values (default: %s)", params.check_tensors ? "true" : "false" });
@@ -2649,14 +2557,9 @@ void llama_lora_adapters_apply(struct llama_context * ctx, std::vector<llama_lor
 struct llama_model_params llama_model_params_from_gpt_params(const gpt_params & params) {
     auto mparams = llama_model_default_params();
 
-    if (params.n_gpu_layers != -1) {
-        mparams.n_gpu_layers = params.n_gpu_layers;
-    }
+    // GPU parameters removed for CPU-only build
     mparams.mla             = params.mla_attn;
     mparams.rpc_servers     = params.rpc_servers.c_str();
-    mparams.main_gpu        = params.main_gpu;
-    mparams.split_mode      = params.split_mode;
-    mparams.tensor_split    = params.tensor_split;
     mparams.use_mmap        = params.use_mmap;
     mparams.use_mlock       = params.use_mlock;
     mparams.check_tensors   = params.check_tensors;
@@ -2750,7 +2653,7 @@ struct llama_context_params llama_context_params_from_gpt_params(const gpt_param
     cparams.fused_up_gate     = params.fused_up_gate;
     cparams.min_experts       = params.min_experts;
     cparams.thresh_experts    = params.thresh_experts;
-    cparams.only_active_experts = params.only_active_exps;
+    // GPU expert offloading removed for CPU-only build
 
     cparams.type_k = kv_cache_type_from_str(params.cache_type_k);
     cparams.type_v = kv_cache_type_from_str(params.cache_type_v);
@@ -3813,7 +3716,7 @@ void yaml_dump_non_result_info(FILE * stream, const gpt_params & params, const l
         }
     }
     fprintf(stream, "lora_init_without_apply: %s # default: false\n", params.lora_init_without_apply ? "true" : "false");
-    fprintf(stream, "main_gpu: %d # default: 0\n", params.main_gpu);
+    // GPU parameters removed from YAML output for CPU-only build
     fprintf(stream, "min_keep: %d # default: 0 (disabled)\n", sparams.min_keep);
     fprintf(stream, "mirostat: %d # default: 0 (disabled)\n", sparams.mirostat);
     fprintf(stream, "mirostat_ent: %f # default: 5.0\n", sparams.mirostat_tau);
@@ -3825,7 +3728,7 @@ void yaml_dump_non_result_info(FILE * stream, const gpt_params & params, const l
     fprintf(stream, "model: %s # default: %s\n", params.model.c_str(), DEFAULT_MODEL_PATH);
     fprintf(stream, "model_draft: %s # default:\n", params.model_draft.c_str());
     fprintf(stream, "multiline_input: %s # default: false\n", params.multiline_input ? "true" : "false");
-    fprintf(stream, "n_gpu_layers: %d # default: -1\n", params.n_gpu_layers);
+    // GPU layers removed from YAML output for CPU-only build
     fprintf(stream, "n_predict: %d # default: -1 (unlimited)\n", params.n_predict);
     fprintf(stream, "n_probs: %d # only used by server binary, default: 0\n", sparams.n_probs);
     fprintf(stream, "no_mmap: %s # default: false\n", !params.use_mmap ? "true" : "false");
@@ -3867,8 +3770,7 @@ void yaml_dump_non_result_info(FILE * stream, const gpt_params & params, const l
     fprintf(stream, "ser: %d,%g # defaulr: -1,0\n", params.min_experts, params.thresh_experts);
     fprintf(stream, "temp: %f # default: 0.8\n", sparams.temp);
 
-    const std::vector<float> tensor_split_vector(params.tensor_split, params.tensor_split + llama_max_devices());
-    yaml_dump_vector_float(stream, "tensor_split", tensor_split_vector);
+    // Tensor split removed from YAML output for CPU-only build
 
     fprintf(stream, "tfs: %f # default: 1.0\n", sparams.tfs_z);
     fprintf(stream, "threads: %d # default: %u\n", params.n_threads, std::thread::hardware_concurrency());

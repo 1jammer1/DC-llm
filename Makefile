@@ -84,15 +84,7 @@ ifdef GGML_CUDA
 $(error GGML_CUDA is not supported. CPU-only build.)
 endif
 
-ifdef LLAMA_KOMPUTE
-GGML_KOMPUTE := 1
-DEPRECATE_WARNING := 1
-endif
-
-ifdef LLAMA_METAL
-GGML_METAL := 1
-DEPRECATE_WARNING := 1
-endif
+# GPU backend options removed for CPU-only build
 
 ifdef LLAMA_OPENMP
 GGML_OPENMP := 1
@@ -104,15 +96,7 @@ GGML_RPC := 1
 DEPRECATE_WARNING := 1
 endif
 
-ifdef LLAMA_SYCL
-GGML_SYCL := 1
-DEPRECATE_WARNING := 1
-endif
-
-ifdef LLAMA_SYCL_F16
-GGML_SYCL_F16 := 1
-DEPRECATE_WARNING := 1
-endif
+# SYCL GPU backend options removed for CPU-only build
 
 ifdef LLAMA_OPENBLAS
 GGML_OPENBLAS := 1
@@ -199,9 +183,7 @@ ifdef GGML_RPC
 	BUILD_TARGETS += rpc-server
 endif
 
-ifdef GGML_VULKAN
-	BUILD_TARGETS += vulkan-shaders-gen
-endif
+# Vulkan build targets removed for CPU-only build
 
 default: $(BUILD_TARGETS) $(LEGACY_TARGETS_BUILD)
 
@@ -591,58 +573,7 @@ endif # GGML_RPC
 # CUDA template objects removed for CPU-only build
 
 
-ifdef GGML_VULKAN
-	MK_CPPFLAGS += -DGGML_USE_VULKAN
-	MK_LDFLAGS  += $(shell pkg-config --libs vulkan)
-	OBJ_GGML    += ggml/src/ggml-vulkan.o ggml/src/ggml-vulkan-shaders.o
-
-ifdef GGML_VULKAN_CHECK_RESULTS
-	MK_CPPFLAGS  += -DGGML_VULKAN_CHECK_RESULTS
-endif
-
-ifdef GGML_VULKAN_DEBUG
-	MK_CPPFLAGS  += -DGGML_VULKAN_DEBUG
-endif
-
-ifdef GGML_VULKAN_MEMORY_DEBUG
-	MK_CPPFLAGS  += -DGGML_VULKAN_MEMORY_DEBUG
-endif
-
-ifdef GGML_VULKAN_PERF
-	MK_CPPFLAGS  += -DGGML_VULKAN_PERF
-endif
-
-ifdef GGML_VULKAN_VALIDATE
-	MK_CPPFLAGS  += -DGGML_VULKAN_VALIDATE
-endif
-
-ifdef GGML_VULKAN_RUN_TESTS
-	MK_CPPFLAGS  += -DGGML_VULKAN_RUN_TESTS
-endif
-
-GLSLC_CMD  = glslc
-_ggml_vk_genshaders_cmd = $(shell pwd)/vulkan-shaders-gen
-_ggml_vk_header = ggml/src/ggml-vulkan-shaders.hpp
-_ggml_vk_source = ggml/src/ggml-vulkan-shaders.cpp
-_ggml_vk_input_dir = ggml/src/vulkan-shaders
-_ggml_vk_shader_deps = $(echo $(_ggml_vk_input_dir)/*.comp)
-
-ggml/src/ggml-vulkan.o: ggml/src/ggml-vulkan.cpp ggml/include/ggml-vulkan.h $(_ggml_vk_header) $(_ggml_vk_source)
-	$(CXX) $(CXXFLAGS) $(shell pkg-config --cflags vulkan) -c $< -o $@
-
-$(_ggml_vk_header): $(_ggml_vk_source)
-
-$(_ggml_vk_source): $(_ggml_vk_shader_deps) vulkan-shaders-gen
-	$(_ggml_vk_genshaders_cmd) \
-		--glslc      $(GLSLC_CMD) \
-		--input-dir  $(_ggml_vk_input_dir) \
-		--target-hpp $(_ggml_vk_header) \
-		--target-cpp $(_ggml_vk_source)
-
-vulkan-shaders-gen: ggml/src/vulkan-shaders/vulkan-shaders-gen.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $(LDFLAGS) ggml/src/vulkan-shaders/vulkan-shaders-gen.cpp
-
-endif # GGML_VULKAN
+# Vulkan backend removed for CPU-only build
 
 ifdef GGML_HIPBLAS
 	ifeq ($(wildcard /opt/rocm),)
@@ -703,31 +634,7 @@ ifdef GGML_METAL_EMBED_LIBRARY
 endif
 endif # GGML_METAL
 
-ifdef GGML_METAL
-ggml/src/ggml-metal.o: \
-	ggml/src/ggml-metal.m \
-	ggml/include/ggml-metal.h \
-	ggml/include/ggml.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-ifdef GGML_METAL_EMBED_LIBRARY
-ggml/src/ggml-metal-embed.o: \
-	ggml/src/ggml-metal.metal \
-	ggml/src/ggml-common.h
-	@echo "Embedding Metal library"
-	@sed -e '/#include "ggml-common.h"/r ggml/src/ggml-common.h' -e '/#include "ggml-common.h"/d' < ggml/src/ggml-metal.metal > ggml/src/ggml-metal-embed.metal
-	$(eval TEMP_ASSEMBLY=$(shell mktemp -d))
-	@echo ".section __DATA, __ggml_metallib"            >  $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo ".globl _ggml_metallib_start"                 >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo "_ggml_metallib_start:"                       >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo ".incbin \"ggml/src/ggml-metal-embed.metal\"" >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo ".globl _ggml_metallib_end"                   >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	@echo "_ggml_metallib_end:"                         >> $(TEMP_ASSEMBLY)/ggml-metal-embed.s
-	$(CC) $(CFLAGS) -c $(TEMP_ASSEMBLY)/ggml-metal-embed.s -o $@
-	@rm -f ${TEMP_ASSEMBLY}/ggml-metal-embed.s
-	@rmdir ${TEMP_ASSEMBLY}
-endif
-endif # GGML_METAL
+# Metal backend removed for CPU-only build
 
 OBJ_GGML += \
 	ggml/src/ggml.o \
@@ -817,12 +724,8 @@ ifdef DEPRECATE_WARNING
 $(info !!! DEPRECATION WARNING !!!)
 $(info The following LLAMA_ options are deprecated and will be removed in the future. Use the GGML_ prefix instead)
 $(info   - LLAMA_CUDA)
-$(info   - LLAMA_METAL)
-$(info   - LLAMA_METAL_EMBED_LIBRARY)
 $(info   - LLAMA_OPENMP)
 $(info   - LLAMA_RPC)
-$(info   - LLAMA_SYCL)
-$(info   - LLAMA_SYCL_F16)
 $(info   - LLAMA_OPENBLAS)
 $(info   - LLAMA_OPENBLAS64)
 $(info   - LLAMA_BLIS)
@@ -934,7 +837,6 @@ src/llama.o: \
 	src/llama-sampling.h \
 	src/unicode.h \
 	include/llama.h \
-	ggml/include/ggml-metal.h \
 	ggml/include/ggml.h \
 	ggml/include/ggml-alloc.h \
 	ggml/include/ggml-backend.h
@@ -1042,10 +944,9 @@ clean:
 	rm -rvf ggml/src/llamafile/*.o
 	rm -rvf ggml/src/iqk/*.o
 	rm -rvf common/build-info.cpp
-	rm -vrf ggml/src/ggml-metal-embed.metal
+	# GPU artifacts cleanup removed for CPU-only build
 	rm -rvf $(BUILD_TARGETS)
 	rm -rvf $(TEST_TARGETS)
-	rm -f vulkan-shaders-gen ggml/src/ggml-vulkan-shaders.hpp ggml/src/ggml-vulkan-shaders.cpp
 	rm -rvf $(LEGACY_TARGETS_CLEAN)
 	find examples pocs -type f -name "*.o" -delete
 

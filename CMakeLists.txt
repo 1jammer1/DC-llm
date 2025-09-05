@@ -109,14 +109,7 @@ function (llama_option_depr TYPE OLD NEW)
 endfunction()
 
 # CUDA deprecation warnings removed for CPU-only build
-llama_option_depr(WARNING     LLAMA_KOMPUTE             GGML_KOMPUTE)
-llama_option_depr(WARNING     LLAMA_METAL               GGML_METAL)
-llama_option_depr(WARNING     LLAMA_METAL_EMBED_LIBRARY GGML_METAL_EMBED_LIBRARY)
-llama_option_depr(WARNING     LLAMA_NATIVE              GGML_NATIVE)
-llama_option_depr(WARNING     LLAMA_RPC                 GGML_RPC)
-llama_option_depr(WARNING     LLAMA_SYCL                GGML_SYCL)
-llama_option_depr(WARNING     LLAMA_SYCL_F16            GGML_SYCL_F16)
-llama_option_depr(WARNING     LLAMA_CANN                GGML_CANN)
+# GPU deprecation warnings removed for CPU-only build
 
 if (NOT MSVC)
     if (LLAMA_SANITIZE_THREAD)

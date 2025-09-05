@@ -120,36 +120,17 @@ option(GGML_IQK_FLASH_ATTENTION             "ggml: enable the IQK FlashAttention
 option(GGML_IQK_FA_ALL_QUANTS               "ggml: compile all quants for IQK FlashAttention" OFF)
 
 option(GGML_CURL                            "ggml: use libcurl to download model from an URL" OFF)
-option(GGML_HIPBLAS                         "ggml: use hipBLAS"                               OFF)
-option(GGML_HIP_UMA                         "ggml: use HIP unified memory architecture"       OFF)
-option(GGML_VULKAN                          "ggml: use Vulkan"                                OFF)
-option(GGML_VULKAN_CHECK_RESULTS            "ggml: run Vulkan op checks"                      OFF)
-option(GGML_VULKAN_DEBUG                    "ggml: enable Vulkan debug output"                OFF)
-option(GGML_VULKAN_MEMORY_DEBUG             "ggml: enable Vulkan memory debug output"         OFF)
-option(GGML_VULKAN_SHADER_DEBUG_INFO        "ggml: enable Vulkan shader debug info"           OFF)
-option(GGML_VULKAN_VALIDATE                 "ggml: enable Vulkan validation"                  OFF)
-option(GGML_VULKAN_RUN_TESTS                "ggml: run Vulkan tests"                          OFF)
-option(GGML_VULKAN_NO_COOPMAT               "ggml: don't use Vulkan coopmat even if supported"       OFF)
-option(GGML_VULKAN_NO_COOPMAT2              "ggml: don't use Vulkan coopmat2 even if supported"      OFF)
-option(GGML_VULKAN_NO_BF16                  "ggml: don't use Vulkan bf16 even if supported"          OFF)
-option(GGML_VULKAN_NO_INT_DOT               "ggml: don't use Vulkan integer dot even if supported"   OFF)
-option(GGML_KOMPUTE                         "ggml: use Kompute"                               OFF)
-option(GGML_METAL                           "ggml: use Metal"                                 ${GGML_METAL_DEFAULT})
-option(GGML_METAL_NDEBUG                    "ggml: disable Metal debugging"                   OFF)
-option(GGML_METAL_SHADER_DEBUG              "ggml: compile Metal with -fno-fast-math"         OFF)
-option(GGML_METAL_EMBED_LIBRARY             "ggml: embed Metal library"                       ${GGML_METAL})
-set   (GGML_METAL_MACOSX_VERSION_MIN "" CACHE STRING
-                                            "ggml: metal minimum macOS version")
-set   (GGML_METAL_STD "" CACHE STRING       "ggml: metal standard version (-std flag)")
+# All GPU backend options removed for CPU-only build
 option(GGML_OPENMP                          "ggml: use OpenMP"                                ON)
 option(GGML_RPC                             "ggml: use RPC"                                   OFF)
-option(GGML_SYCL                            "ggml: use SYCL"                                  OFF)
-option(GGML_SYCL_F16                        "ggml: use 16 bit floats for sycl calculations"   OFF)
-set   (GGML_SYCL_TARGET "INTEL" CACHE STRING
-                                            "ggml: sycl target device")
+# SYCL GPU backend options removed for CPU-only build
 
-# toolchain for vulkan-shaders-gen
-set   (GGML_VULKAN_SHADERS_GEN_TOOLCHAIN "" CACHE FILEPATH "ggml: toolchain file for vulkan-shaders-gen")
+# Error if any GPU backend is attempted
+if (GGML_VULKAN OR GGML_METAL OR GGML_SYCL OR GGML_KOMPUTE OR GGML_HIPBLAS OR GGML_HIP_UMA)
+    message(FATAL_ERROR "GPU backends (VULKAN, METAL, SYCL, KOMPUTE, HIPBLAS) have been removed for CPU-only build")
+endif()
+
+# Vulkan shaders toolchain removed for CPU-only build
 
 # extra artifacts
 option(GGML_BUILD_TESTS    "ggml: build tests"    ${GGML_STANDALONE})
@@ -200,11 +181,7 @@ set(GGML_PUBLIC_HEADERS
     include/ggml-blas.h
     include/ggml-cann.h
     include/ggml.h
-    include/ggml-kompute.h
-    include/ggml-metal.h
-    include/ggml-rpc.h
-    include/ggml-sycl.h
-    include/ggml-vulkan.h)
+    include/ggml-rpc.h)
 
 set_target_properties(ggml PROPERTIES PUBLIC_HEADER "${GGML_PUBLIC_HEADERS}")
 #if (GGML_METAL)
